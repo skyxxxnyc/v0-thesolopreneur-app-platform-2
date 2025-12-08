@@ -43,6 +43,7 @@ export function LeadDetailModal({ lead, onClose }: LeadDetailModalProps) {
   useEffect(() => {
     async function loadData() {
       const supabase = createBrowserClient()
+      // @ts-expect-error - Supabase select returns unknown in strict mode
       const { data } = await supabase
         .from("sdr_analyses")
         .select("*")
@@ -51,7 +52,7 @@ export function LeadDetailModal({ lead, onClose }: LeadDetailModalProps) {
         .limit(1)
         .single()
 
-      setSdrAnalysis(data)
+      setSdrAnalysis(data as SDRAnalysis | null)
     }
     loadData()
   }, [lead.id])

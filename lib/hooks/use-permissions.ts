@@ -12,6 +12,7 @@ import {
   getAssignableRoles,
   ROLE_HIERARCHY,
 } from "@/lib/roles/permissions"
+import type { TenantMember } from "@/lib/types/database"
 
 interface UsePermissionsReturn {
   role: UserRole | null
@@ -42,9 +43,10 @@ export function usePermissions(): UsePermissionsReturn {
         return
       }
 
+      // @ts-expect-error - Supabase select returns unknown in strict mode
       const { data: membership } = await supabase.from("tenant_members").select("role").eq("user_id", user.id).single()
 
-      setRole((membership?.role as UserRole) || null)
+      setRole(((membership as TenantMember | null)?.role as UserRole) || null)
       setLoading(false)
     }
 

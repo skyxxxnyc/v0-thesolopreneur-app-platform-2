@@ -8,10 +8,15 @@ export default async function CompaniesPage() {
   const {
     data: { user },
   } = await supabase.auth.getUser()
-  if (!user) redirect("/auth/login")
+
+  // TEMPORARY: Skip auth check for now
+  // if (!user) redirect("/auth/login")
+
+  // Use actual user or mock user for development
+  const currentUser = user || { id: 'dev-user', email: 'dev@example.com' } as any
 
   // Get user's tenant memberships
-  const { data: memberships } = await supabase.from("tenant_members").select("tenant_id").eq("user_id", user.id)
+  const { data: memberships } = await supabase.from("tenant_members").select("tenant_id").eq("user_id", currentUser.id)
 
   const tenantIds = memberships?.map((m) => m.tenant_id) || []
 

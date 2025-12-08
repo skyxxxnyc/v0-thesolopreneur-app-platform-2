@@ -3,10 +3,30 @@ import Image from "next/image"
 import { Twitter, Linkedin, Github } from "lucide-react"
 
 const footerLinks = {
-  Product: ["Features", "AI Agents", "Pricing", "Templates", "Integrations"],
-  Company: ["About", "Blog", "Careers", "Contact"],
-  Resources: ["Documentation", "API Reference", "Community", "Support"],
-  Legal: ["Privacy", "Terms", "Security"],
+  Product: [
+    { label: "Features", href: "/#features" },
+    { label: "AI Agents", href: "/#ai-agents" },
+    { label: "Pricing", href: "/#pricing" },
+    { label: "Templates", href: "/templates" },
+    { label: "Integrations", href: "#" },
+  ],
+  Company: [
+    { label: "About", href: "#" },
+    { label: "Blog", href: "#" },
+    { label: "Careers", href: "#" },
+    { label: "Contact", href: "#" },
+  ],
+  Resources: [
+    { label: "Documentation", href: "#" },
+    { label: "API Reference", href: "/api-reference" },
+    { label: "Community", href: "#" },
+    { label: "Support", href: "#" },
+  ],
+  Legal: [
+    { label: "Privacy", href: "/privacy" },
+    { label: "Terms", href: "/terms" },
+    { label: "Security", href: "/security" },
+  ],
 }
 
 export function Footer() {
@@ -50,9 +70,9 @@ export function Footer() {
               <h4 className="text-xs font-medium mb-4 text-neutral-400 uppercase tracking-wider">{category}</h4>
               <ul className="space-y-2">
                 {links.map((link) => (
-                  <li key={link}>
-                    <Link href="#" className="text-sm text-neutral-500 hover:text-white transition-colors">
-                      {link}
+                  <li key={link.label}>
+                    <Link href={link.href} className="text-sm text-neutral-500 hover:text-white transition-colors">
+                      {link.label}
                     </Link>
                   </li>
                 ))}

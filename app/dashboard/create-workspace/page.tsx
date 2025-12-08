@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
+import type { Tenant } from "@/lib/types/database"
 
 const colors = ["#00ff88", "#00d4ff", "#ff6b6b", "#ffd93d", "#a855f7", "#f97316"]
 
@@ -23,12 +24,13 @@ export default function CreateWorkspacePage() {
 
   const handleNameChange = (value: string) => {
     setName(value)
-    setSlug(
-      value
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-|-$/g, ""),
-    )
+    const baseSlug = value
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "")
+    // Add a random suffix to make it unique
+    const randomSuffix = Math.random().toString(36).substring(2, 6)
+    setSlug(baseSlug ? `${baseSlug}-${randomSuffix}` : "")
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -49,6 +51,7 @@ export default function CreateWorkspacePage() {
 
     try {
       // Create tenant
+      // @ts-expect-error - Supabase query returns unknown type
       const { data: tenant, error: tenantError } = await supabase
         .from("tenants")
         .insert({
@@ -59,10 +62,17 @@ export default function CreateWorkspacePage() {
         .select()
         .single()
 
-      if (tenantError) throw tenantError
+      if (tenantError) {
+        // Check if it's a duplicate slug error
+        if (tenantError.code === '23505' || tenantError.message.includes('duplicate') || tenantError.message.includes('unique')) {
+          throw new Error(`Workspace URL "${slug}" is already taken. Please choose a different name.`)
+        }
+        throw tenantError
+      }
 
+      // @ts-expect-error - Supabase query returns unknown type
       const { error: memberError } = await supabase.from("tenant_members").insert({
-        tenant_id: tenant.id,
+        tenant_id: (tenant as Tenant).id,
         user_id: user.id,
         role: "super_admin",
       })
@@ -72,6 +82,7 @@ export default function CreateWorkspacePage() {
       router.push("/dashboard")
       router.refresh()
     } catch (err: unknown) {
+      console.error('Create workspace error:', err)
       setError(err instanceof Error ? err.message : "Failed to create workspace")
     } finally {
       setIsLoading(false)

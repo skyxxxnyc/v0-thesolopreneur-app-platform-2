@@ -31,25 +31,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import type { User } from "@/lib/supabase/client"
-
-interface Tenant {
-  id: string
-  name: string
-  slug: string
-  logo_url: string | null
-  primary_color: string | null
-}
-
-interface Membership {
-  id: string
-  tenant_id: string
-  role: string
-  tenant: Tenant
-}
+import type { Profile, Membership } from "@/lib/types/database"
 
 interface SidebarProps {
   user: User
-  profile: { full_name: string | null } | null
+  profile: Profile | null
   memberships: Membership[]
 }
 

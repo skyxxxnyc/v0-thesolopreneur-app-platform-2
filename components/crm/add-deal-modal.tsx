@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
+import type { Deal } from "@/lib/types/crm"
 
 interface AddDealModalProps {
   tenantId: string
@@ -55,6 +56,7 @@ export function AddDealModal({ tenantId, companies, contacts, onClose }: AddDeal
       }
 
       const supabase = createBrowserClient()
+      // @ts-expect-error - Supabase select returns unknown in strict mode
       const { data } = await supabase
         .from("activities")
         .select("id, type, subject, created_at")
@@ -63,7 +65,7 @@ export function AddDealModal({ tenantId, companies, contacts, onClose }: AddDeal
         .order("created_at", { ascending: false })
         .limit(10)
 
-      setQualifyingActivities(data || [])
+      setQualifyingActivities((data || []) as QualifyingActivity[])
       setCanCreate((data?.length || 0) > 0)
 
       // Auto-select most recent activity
@@ -88,6 +90,7 @@ export function AddDealModal({ tenantId, companies, contacts, onClose }: AddDeal
       data: { user },
     } = await supabase.auth.getUser()
 
+    // @ts-expect-error - Supabase insert returns unknown in strict mode
     const { error } = await supabase.from("deals").insert({
       tenant_id: tenantId,
       name: formData.name,

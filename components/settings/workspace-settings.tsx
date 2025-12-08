@@ -16,6 +16,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import type { Tenant, TenantMember } from "@/lib/types/database"
 
 interface WorkspaceSettingsProps {
   workspace: any
@@ -41,6 +42,7 @@ export function WorkspaceSettings({ workspace, memberships: initialMemberships }
     setLoading(true)
     const supabase = createClient()
 
+    // @ts-expect-error - Supabase update returns unknown in strict mode
     const { error } = await supabase
       .from("tenants")
       .update({
@@ -64,6 +66,7 @@ export function WorkspaceSettings({ workspace, memberships: initialMemberships }
     setInviting(true)
     const supabase = createClient()
 
+    // @ts-expect-error - Supabase insert returns unknown in strict mode
     const { error } = await supabase.from("invitations").insert({
       tenant_id: workspace.id,
       email: inviteEmail,
@@ -81,6 +84,7 @@ export function WorkspaceSettings({ workspace, memberships: initialMemberships }
     if (!can("team:change_roles")) return
     const supabase = createClient()
 
+    // @ts-expect-error - Supabase update returns unknown in strict mode
     const { error } = await supabase.from("tenant_members").update({ role: newRole }).eq("id", memberId)
 
     if (!error) {
@@ -92,6 +96,7 @@ export function WorkspaceSettings({ workspace, memberships: initialMemberships }
     if (!can("team:remove")) return
     const supabase = createClient()
 
+    // @ts-expect-error - Supabase delete returns unknown in strict mode
     const { error } = await supabase.from("tenant_members").delete().eq("id", memberId)
 
     if (!error) {

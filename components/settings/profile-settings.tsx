@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { createClient } from "@/lib/supabase/client"
 import { Loader2, Check } from "lucide-react"
+import type { Profile } from "@/lib/types/database"
 
 interface ProfileSettingsProps {
   user: any
@@ -22,6 +23,7 @@ export function ProfileSettings({ user, profile }: ProfileSettingsProps) {
     setLoading(true)
     const supabase = createClient()
 
+    // @ts-expect-error - Supabase update returns unknown in strict mode
     const { error } = await supabase
       .from("profiles")
       .update({

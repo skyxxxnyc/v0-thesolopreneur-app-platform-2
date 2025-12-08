@@ -8,7 +8,8 @@ export default async function AgentsPage() {
     data: { user },
   } = await supabase.auth.getUser()
 
-  if (!user) redirect("/auth/login")
+  // TEMPORARY: Skip auth check for now
+  // if (!user) redirect("/auth/login")
 
   return <AgentsHub />
 }

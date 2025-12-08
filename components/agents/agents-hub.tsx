@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   Bot,
   Zap,
@@ -15,6 +15,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { createClient } from "@/lib/supabase/client"
 import { SDRAgentPanel } from "./sdr-agent-panel"
 import { EnrichmentAgentPanel } from "./enrichment-agent-panel"
 import { OutreachAgentPanel } from "./outreach-agent-panel"
@@ -33,16 +34,13 @@ interface Agent {
   tasksQueued: number
 }
 
-const agents: Agent[] = [
+const agentDefinitions: Omit<Agent, "tasksCompleted" | "tasksQueued" | "status">[] = [
   {
     id: "sdr",
     name: "SDR Agent",
     description: "Analyzes leads against ICP, scores prospects, identifies pain points and opportunities",
     icon: Bot,
     color: "#00ff88",
-    status: "active",
-    tasksCompleted: 147,
-    tasksQueued: 12,
   },
   {
     id: "enrichment",
@@ -50,9 +48,6 @@ const agents: Agent[] = [
     description: "Augments lead data with company info, social profiles, tech stack, and firmographics",
     icon: Zap,
     color: "#00d4ff",
-    status: "active",
-    tasksCompleted: 89,
-    tasksQueued: 5,
   },
   {
     id: "outreach",
@@ -60,9 +55,6 @@ const agents: Agent[] = [
     description: "Generates personalized messaging based on pain points and talking points",
     icon: MessageSquare,
     color: "#ff6b6b",
-    status: "paused",
-    tasksCompleted: 234,
-    tasksQueued: 0,
   },
   {
     id: "followup",
@@ -70,9 +62,6 @@ const agents: Agent[] = [
     description: "Manages intelligent cadences and automated follow-up sequences",
     icon: RefreshCw,
     color: "#ffa500",
-    status: "idle",
-    tasksCompleted: 56,
-    tasksQueued: 8,
   },
 ]
 
@@ -84,6 +73,55 @@ export function AgentsHub() {
     outreach: "paused",
     followup: "idle",
   })
+  const [agentStats, setAgentStats] = useState<Record<AgentType, { completed: number; queued: number }>>({
+    sdr: { completed: 0, queued: 0 },
+    enrichment: { completed: 0, queued: 0 },
+    outreach: { completed: 0, queued: 0 },
+    followup: { completed: 0, queued: 0 },
+  })
+
+  useEffect(() => {
+    fetchAgentStats()
+  }, [])
+
+  async function fetchAgentStats() {
+    try {
+      const supabase = await createClient()
+
+      // SDR stats - count analyses
+      const { count: sdrCompleted } = await supabase
+        .from("sdr_analyses")
+        .select("*", { count: "exact", head: true })
+
+      const { count: sdrQueued } = await supabase
+        .from("leads")
+        .select("*", { count: "exact", head: true })
+        .is("icp_score", null)
+
+      // Get agent runs stats for other agents
+      const { data: runs } = await supabase
+        .from("agent_runs")
+        .select("agent_type, status, completed_tasks")
+        .in("agent_type", ["enrichment", "outreach", "followup"])
+
+      const enrichmentCompleted = runs?.filter(r => r.agent_type === "enrichment" && r.status === "completed").reduce((sum, r) => sum + (r.completed_tasks || 0), 0) || 0
+      const outreachCompleted = runs?.filter(r => r.agent_type === "outreach" && r.status === "completed").reduce((sum, r) => sum + (r.completed_tasks || 0), 0) || 0
+      const followupCompleted = runs?.filter(r => r.agent_type === "followup" && r.status === "completed").reduce((sum, r) => sum + (r.completed_tasks || 0), 0) || 0
+
+      const enrichmentQueued = runs?.filter(r => r.agent_type === "enrichment" && r.status === "pending").length || 0
+      const outreachQueued = runs?.filter(r => r.agent_type === "outreach" && r.status === "pending").length || 0
+      const followupQueued = runs?.filter(r => r.agent_type === "followup" && r.status === "pending").length || 0
+
+      setAgentStats({
+        sdr: { completed: sdrCompleted || 0, queued: sdrQueued || 0 },
+        enrichment: { completed: enrichmentCompleted, queued: enrichmentQueued },
+        outreach: { completed: outreachCompleted, queued: outreachQueued },
+        followup: { completed: followupCompleted, queued: followupQueued },
+      })
+    } catch (error) {
+      console.error("Error fetching agent stats:", error)
+    }
+  }
 
   const toggleAgent = (agentId: AgentType) => {
     setAgentStates((prev) => ({
@@ -92,8 +130,15 @@ export function AgentsHub() {
     }))
   }
 
-  const totalCompleted = agents.reduce((sum, a) => sum + a.tasksCompleted, 0)
-  const totalQueued = agents.reduce((sum, a) => sum + a.tasksQueued, 0)
+  const agents: Agent[] = agentDefinitions.map(def => ({
+    ...def,
+    status: agentStates[def.id],
+    tasksCompleted: agentStats[def.id].completed,
+    tasksQueued: agentStats[def.id].queued,
+  }))
+
+  const totalCompleted = Object.values(agentStats).reduce((sum, s) => sum + s.completed, 0)
+  const totalQueued = Object.values(agentStats).reduce((sum, s) => sum + s.queued, 0)
   const activeAgents = Object.values(agentStates).filter((s) => s === "active").length
 
   return (

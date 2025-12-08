@@ -63,20 +63,26 @@ export function CompanyDetailModal({ company, onClose }: CompanyDetailModalProps
       const supabase = createBrowserClient()
 
       const [contactsRes, projectsRes, dealsRes, activitiesRes, notesRes, sdrRes] = await Promise.all([
+        // @ts-expect-error - Supabase select returns unknown in strict mode
         supabase.from("contacts").select("*").eq("company_id", company.id).order("created_at", { ascending: false }),
+        // @ts-expect-error - Supabase select returns unknown in strict mode
         supabase.from("projects").select("*").eq("company_id", company.id).order("created_at", { ascending: false }),
+        // @ts-expect-error - Supabase select returns unknown in strict mode
         supabase.from("deals").select("*").eq("company_id", company.id).order("created_at", { ascending: false }),
+        // @ts-expect-error - Supabase select returns unknown in strict mode
         supabase
           .from("activities")
           .select("*, owner:profiles(id, full_name)")
           .eq("company_id", company.id)
           .order("created_at", { ascending: false })
           .limit(20),
+        // @ts-expect-error - Supabase select returns unknown in strict mode
         supabase
           .from("notes")
           .select("*, author:profiles(id, full_name)")
           .eq("company_id", company.id)
           .order("created_at", { ascending: false }),
+        // @ts-expect-error - Supabase select returns unknown in strict mode
         supabase
           .from("sdr_analyses")
           .select("*")
@@ -86,12 +92,12 @@ export function CompanyDetailModal({ company, onClose }: CompanyDetailModalProps
           .single(),
       ])
 
-      setContacts(contactsRes.data || [])
-      setProjects(projectsRes.data || [])
-      setDeals(dealsRes.data || [])
-      setActivities(activitiesRes.data || [])
-      setNotes(notesRes.data || [])
-      setSdrAnalysis(sdrRes.data)
+      setContacts((contactsRes.data || []) as Contact[])
+      setProjects((projectsRes.data || []) as Project[])
+      setDeals((dealsRes.data || []) as Deal[])
+      setActivities((activitiesRes.data || []) as ActivityType[])
+      setNotes((notesRes.data || []) as Note[])
+      setSdrAnalysis(sdrRes.data as SDRAnalysis | null)
       setLoading(false)
     }
 

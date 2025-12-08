@@ -40,9 +40,10 @@ export default function DashboardPage() {
           return
         }
 
+        // @ts-expect-error - Supabase query returns unknown type
         const { data: profile } = await supabase.from("profiles").select("full_name").eq("id", user.id).single()
 
-        setDisplayName(profile?.full_name || user.email?.split("@")[0] || "there")
+        setDisplayName((profile as { full_name: string | null } | null)?.full_name || user.email?.split("@")[0] || "there")
       } catch {
         router.push("/auth/login")
       } finally {

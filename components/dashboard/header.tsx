@@ -13,10 +13,11 @@ import {
 import { Bell, Search, LogOut, UserIcon, Settings, Plus, Command } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import type { User } from "@/lib/supabase/client"
+import type { Profile } from "@/lib/types/database"
 
 interface HeaderProps {
   user: User
-  profile: { full_name: string | null } | null
+  profile: Profile | null
 }
 
 export function DashboardHeader({ user, profile }: HeaderProps) {

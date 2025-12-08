@@ -41,6 +41,7 @@ export interface SupabaseClient {
 }
 
 let clientInstance: unknown = null
+let actualClient: any = null
 
 // Main createClient function - dynamically loads @supabase/supabase-js
 export function createClient() {
@@ -49,10 +50,29 @@ export function createClient() {
   }
 
   if (!clientInstance) {
-    // Lazy load supabase-js
+    // Lazy load supabase-js and create actual client
     const loadClient = async () => {
+      if (actualClient) return actualClient
+
       const { createClient: createSupabaseClient } = await import("@supabase/supabase-js")
-      return createSupabaseClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
+
+      // Get env vars - these must be accessed inside the async function for proper bundling
+      const url = 'https://iayuzhyebxfnrydutkom.supabase.co'
+      const key = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlheXV6aHllYnhmbnJ5ZHV0a29tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjExNzg5NTYsImV4cCI6MjA3Njc1NDk1Nn0.FwVvEuC1KYRlDz3Pf8T2ycXNFsZ2pa2maIwsY5d93hg'
+
+      if (!url || !key) {
+        throw new Error('Missing Supabase credentials')
+      }
+
+      actualClient = createSupabaseClient(url, key, {
+        auth: {
+          persistSession: true,
+          autoRefreshToken: true,
+          detectSessionInUrl: true
+        }
+      })
+
+      return actualClient
     }
 
     // Create a proxy that awaits the client on each call
@@ -107,7 +127,7 @@ export function createClient() {
                   ) => Promise<unknown> & { single: () => Promise<unknown>; maybeSingle: () => Promise<unknown> }
                   single: () => Promise<unknown>
                 }
-                // @ts-expect-error - dynamic method
+                // Dynamic method assignment
                 promise.eq = (col: string, val: unknown) => {
                   const eqFn = async () => {
                     const c = await getClient()
@@ -117,28 +137,56 @@ export function createClient() {
                     single: () => Promise<unknown>
                     maybeSingle: () => Promise<unknown>
                   }
-                  // @ts-expect-error - dynamic method
+                  // Dynamic method assignment
                   eqPromise.single = async () => {
                     const c = await getClient()
                     return c.from(table).select(columns).eq(col, val).single()
                   }
-                  // @ts-expect-error - dynamic method
+                  // Dynamic method assignment
                   eqPromise.maybeSingle = async () => {
                     const c = await getClient()
                     return c.from(table).select(columns).eq(col, val).maybeSingle()
                   }
                   return eqPromise
                 }
-                // @ts-expect-error - dynamic method
+                // Dynamic method assignment
                 promise.single = async () => {
                   const c = await getClient()
                   return c.from(table).select(columns).single()
                 }
                 return promise
               },
-              insert: async (data: unknown) => {
-                const c = await getClient()
-                return c.from(table).insert(data)
+              insert: (data: unknown) => {
+                const insertFn = async () => {
+                  const c = await getClient()
+                  return c.from(table).insert(data)
+                }
+                const promise = insertFn() as Promise<unknown> & {
+                  select: (columns?: string) => Promise<unknown> & { single: () => Promise<unknown>; maybeSingle: () => Promise<unknown> }
+                }
+                // Add select method for chaining
+                promise.select = (columns?: string) => {
+                  const selectFn = async () => {
+                    const c = await getClient()
+                    return c.from(table).insert(data).select(columns)
+                  }
+                  const selectPromise = selectFn() as Promise<unknown> & {
+                    single: () => Promise<unknown>
+                    maybeSingle: () => Promise<unknown>
+                  }
+                  // Add single method
+                  selectPromise.single = async () => {
+                    const c = await getClient()
+                    return c.from(table).insert(data).select(columns).single()
+                  }
+                  // Add maybeSingle method
+                  selectPromise.maybeSingle = async () => {
+                    const c = await getClient()
+                    return c.from(table).insert(data).select(columns).maybeSingle()
+                  }
+                  return selectPromise
+                }
+                return promise
               },
               update: (data: unknown) => ({
                 eq: async (col: string, val: unknown) => {

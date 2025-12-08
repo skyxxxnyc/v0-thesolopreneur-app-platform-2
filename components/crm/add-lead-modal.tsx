@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { createBrowserClient } from "@/lib/supabase/client"
+import type { Lead } from "@/lib/types/crm"
 
 interface AddLeadModalProps {
   tenantId: string
@@ -42,6 +43,7 @@ export function AddLeadModal({ tenantId, onClose }: AddLeadModalProps) {
 
     const supabase = createBrowserClient()
 
+    // @ts-expect-error - Supabase insert returns unknown in strict mode
     const { error: insertError } = await supabase.from("leads").insert({
       tenant_id: tenantId,
       ...formData,

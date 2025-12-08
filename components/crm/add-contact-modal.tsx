@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { createBrowserClient } from "@/lib/supabase/client"
+import type { Contact } from "@/lib/types/crm"
 
 interface AddContactModalProps {
   tenantId: string
@@ -43,6 +44,7 @@ export function AddContactModal({ tenantId, companies, onClose }: AddContactModa
 
     const supabase = createBrowserClient()
 
+    // @ts-expect-error - Supabase insert returns unknown in strict mode
     const { error: insertError } = await supabase.from("contacts").insert({
       tenant_id: tenantId,
       ...formData,

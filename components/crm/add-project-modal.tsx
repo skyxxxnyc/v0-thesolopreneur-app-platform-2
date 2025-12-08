@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
+import type { Project } from "@/lib/types/crm"
 
 interface AddProjectModalProps {
   tenantId: string
@@ -42,6 +43,7 @@ export function AddProjectModal({ tenantId, companies, onClose }: AddProjectModa
       data: { user },
     } = await supabase.auth.getUser()
 
+    // @ts-expect-error - Supabase insert returns unknown in strict mode
     const { error } = await supabase.from("projects").insert({
       tenant_id: tenantId,
       name: formData.name,

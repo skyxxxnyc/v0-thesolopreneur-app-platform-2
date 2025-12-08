@@ -20,9 +20,13 @@ export async function createClient() {
     }
   }
 
+  // Hardcode the values for now since env vars aren't loading properly
+  const url = 'https://iayuzhyebxfnrydutkom.supabase.co'
+  const key = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlheXV6aHllYnhmbnJ5ZHV0a29tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjExNzg5NTYsImV4cCI6MjA3Njc1NDk1Nn0.FwVvEuC1KYRlDz3Pf8T2ycXNFsZ2pa2maIwsY5d93hg'
+
   const supabase = createSupabaseClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    url,
+    key,
     {
       global: {
         headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},

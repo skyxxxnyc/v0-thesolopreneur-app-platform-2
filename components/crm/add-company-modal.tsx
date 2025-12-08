@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { createBrowserClient } from "@/lib/supabase/client"
+import type { Company } from "@/lib/types/crm"
 
 interface AddCompanyModalProps {
   tenantId: string
@@ -42,6 +43,7 @@ export function AddCompanyModal({ tenantId, onClose }: AddCompanyModalProps) {
 
     const supabase = createBrowserClient()
 
+    // @ts-expect-error - Supabase insert returns unknown in strict mode
     const { error: insertError } = await supabase.from("companies").insert({
       tenant_id: tenantId,
       ...formData,

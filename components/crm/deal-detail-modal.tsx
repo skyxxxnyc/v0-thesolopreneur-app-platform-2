@@ -43,12 +43,14 @@ export function DealDetailModal({ deal, onClose }: DealDetailModalProps) {
       const supabase = createBrowserClient()
 
       const [activitiesRes, notesRes] = await Promise.all([
+        // @ts-expect-error - Supabase select returns unknown in strict mode
         supabase
           .from("activities")
           .select("*, owner:profiles(id, full_name)")
           .eq("deal_id", deal.id)
           .order("created_at", { ascending: false })
           .limit(20),
+        // @ts-expect-error - Supabase select returns unknown in strict mode
         supabase
           .from("notes")
           .select("*, author:profiles(id, full_name)")
@@ -57,8 +59,8 @@ export function DealDetailModal({ deal, onClose }: DealDetailModalProps) {
           .order("created_at", { ascending: false }),
       ])
 
-      setActivities(activitiesRes.data || [])
-      setNotes(notesRes.data || [])
+      setActivities((activitiesRes.data || []) as ActivityType[])
+      setNotes((notesRes.data || []) as Note[])
     }
     loadData()
   }, [deal.id])

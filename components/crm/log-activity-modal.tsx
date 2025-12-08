@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
+import type { Activity } from "@/lib/types/crm"
 
 interface LogActivityModalProps {
   tenantId: string
@@ -75,6 +76,7 @@ export function LogActivityModal({
     const entityType = dealId ? "deal" : projectId ? "project" : leadId ? "lead" : contactId ? "contact" : "company"
     const entityId = dealId || projectId || leadId || contactId || companyId
 
+    // @ts-expect-error - Supabase insert returns unknown in strict mode
     const { error } = await supabase.from("activities").insert({
       tenant_id: tenantId,
       entity_type: entityType,
