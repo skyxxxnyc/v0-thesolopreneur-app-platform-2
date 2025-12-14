@@ -26,12 +26,39 @@ export async function POST(req: NextRequest) {
       .eq("user_id", currentUser.id)
       .single()
 
-    // TEMPORARY: If dev-user has no tenant, use the first available tenant
+    // TEMPORARY: If dev-user has no tenant, use the first available tenant or create one
     if (!membership && currentUser.id === "dev-user") {
       const { data: firstTenant } = await supabase.from("tenants").select("id").limit(1).single()
 
       if (firstTenant) {
         membership = { tenant_id: firstTenant.id }
+      } else {
+        // Create a default tenant for dev-user
+        const timestamp = Date.now().toString(36)
+        const random = Math.random().toString(36).substring(2, 5)
+        const { data: newTenant, error: tenantError } = await supabase
+          .from("tenants")
+          .insert({
+            name: "Dev Workspace",
+            slug: `dev-workspace-${timestamp}${random}`,
+            brand_color: "#ff6b6b",
+          })
+          .select("id")
+          .single()
+
+        if (tenantError || !newTenant) {
+          console.error("Failed to create dev tenant:", tenantError)
+          return NextResponse.json({ error: "Failed to create workspace" }, { status: 500 })
+        }
+
+        // Add dev-user as member
+        await supabase.from("tenant_members").insert({
+          tenant_id: newTenant.id,
+          user_id: currentUser.id,
+          role: "owner",
+        })
+
+        membership = { tenant_id: newTenant.id }
       }
     }
 
