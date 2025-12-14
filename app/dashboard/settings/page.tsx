@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation"
-import { createClient } from "@/lib/supabase/server"
+import { createServerClient } from "@/lib/supabase/server"
 import { SettingsContent } from "@/components/settings/settings-content"
 
 export const metadata = {
@@ -8,7 +8,7 @@ export const metadata = {
 }
 
 export default async function SettingsPage() {
-  const supabase = await createClient()
+  const supabase = await createServerClient()
 
   const {
     data: { user },
