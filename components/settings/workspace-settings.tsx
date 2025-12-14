@@ -5,9 +5,10 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { createClient } from "@/lib/supabase/client"
-import { Loader2, Check, Trash2, UserPlus, Shield, MoreVertical } from "lucide-react"
+import { Loader2, Check, Trash2, UserPlus, Shield, MoreVertical, Plus, Building2 } from "lucide-react"
 import { usePermissions } from "@/lib/hooks/use-permissions"
 import { type UserRole, ROLE_LABELS, ROLE_DESCRIPTIONS } from "@/lib/roles/permissions"
+import { useRouter } from "next/navigation"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,7 +24,10 @@ interface WorkspaceSettingsProps {
   memberships: any[]
 }
 
+const colors = ["#00ff88", "#00d4ff", "#ff6b6b", "#ffd93d", "#a855f7", "#f97316"]
+
 export function WorkspaceSettings({ workspace, memberships: initialMemberships }: WorkspaceSettingsProps) {
+  const router = useRouter()
   const [name, setName] = useState(workspace?.name || "")
   const [slug, setSlug] = useState(workspace?.slug || "")
   const [primaryColor, setPrimaryColor] = useState(workspace?.primary_color || "#00ff88")
@@ -34,8 +38,107 @@ export function WorkspaceSettings({ workspace, memberships: initialMemberships }
   const [inviteRole, setInviteRole] = useState<UserRole>("member")
   const [inviting, setInviting] = useState(false)
   const [showInviteForm, setShowInviteForm] = useState(false)
+  const [showCreateWorkspace, setShowCreateWorkspace] = useState(false)
+  const [newWorkspaceName, setNewWorkspaceName] = useState("")
+  const [newWorkspaceSlug, setNewWorkspaceSlug] = useState("")
+  const [newWorkspaceColor, setNewWorkspaceColor] = useState(colors[0])
+  const [creatingWorkspace, setCreatingWorkspace] = useState(false)
 
   const { role: currentUserRole, can, canManage, assignableRoles, isSuperAdmin } = usePermissions()
+
+  const generateUniqueSlug = (baseName: string) => {
+    const baseSlug = baseName
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "")
+
+    if (!baseSlug) return ""
+
+    const timestamp = Date.now().toString(36)
+    const random = Math.random().toString(36).substring(2, 5)
+    return `${baseSlug}-${timestamp}${random}`
+  }
+
+  const handleCreateWorkspace = async () => {
+    if (!newWorkspaceName.trim()) {
+      alert("Please enter a workspace name")
+      return
+    }
+
+    setCreatingWorkspace(true)
+    const supabase = createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+      alert("You must be logged in")
+      setCreatingWorkspace(false)
+      return
+    }
+
+    let attempts = 0
+    const maxAttempts = 5
+    let currentSlug = newWorkspaceSlug || generateUniqueSlug(newWorkspaceName)
+
+    while (attempts < maxAttempts) {
+      try {
+        // @ts-expect-error - Supabase query returns unknown type
+        const { data: tenant, error: tenantError } = await supabase
+          .from("tenants")
+          .insert({
+            name: newWorkspaceName,
+            slug: currentSlug,
+            primary_color: newWorkspaceColor,
+          })
+          .select()
+          .single()
+
+        if (tenantError) {
+          if (
+            tenantError.code === "23505" ||
+            tenantError.message.includes("duplicate") ||
+            tenantError.message.includes("unique")
+          ) {
+            attempts++
+            if (attempts >= maxAttempts) {
+              throw new Error(`Unable to create workspace after ${maxAttempts} attempts. Please try a different name.`)
+            }
+            currentSlug = generateUniqueSlug(newWorkspaceName)
+            setNewWorkspaceSlug(currentSlug)
+            continue
+          }
+          throw tenantError
+        }
+
+        // @ts-expect-error - Supabase query returns unknown type
+        const { error: memberError } = await supabase.from("tenant_members").insert({
+          tenant_id: (tenant as Tenant).id,
+          user_id: user.id,
+          role: "super_admin",
+        })
+
+        if (memberError) throw memberError
+
+        // Success!
+        setNewWorkspaceName("")
+        setNewWorkspaceSlug("")
+        setNewWorkspaceColor(colors[0])
+        setShowCreateWorkspace(false)
+        router.refresh()
+        return
+      } catch (err: unknown) {
+        if (attempts >= maxAttempts || !(err instanceof Error && err.message.includes("duplicate"))) {
+          console.error("Create workspace error:", err)
+          alert(err instanceof Error ? err.message : "Failed to create workspace")
+          setCreatingWorkspace(false)
+          return
+        }
+      }
+    }
+
+    setCreatingWorkspace(false)
+  }
 
   const handleSave = async () => {
     if (!workspace || !can("workspace:update")) return
@@ -138,10 +241,178 @@ export function WorkspaceSettings({ workspace, memberships: initialMemberships }
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-semibold text-white">Workspace</h2>
-        <p className="text-sm text-zinc-400 mt-1">Manage your workspace settings and team members</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-semibold text-white">Workspaces</h2>
+          <p className="text-sm text-zinc-400 mt-1">Manage your workspaces and team members</p>
+        </div>
+        <Button
+          onClick={() => setShowCreateWorkspace(true)}
+          className="bg-[#00ff88] text-black hover:bg-[#00ff88]/90"
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          New Workspace
+        </Button>
       </div>
+
+      {/* Create Workspace Modal */}
+      {showCreateWorkspace && (
+        <div className="bg-zinc-900 border border-zinc-800 p-6 space-y-6">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-white uppercase tracking-wider">Create New Workspace</h3>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowCreateWorkspace(false)}
+              className="text-zinc-400 hover:text-white"
+            >
+              Cancel
+            </Button>
+          </div>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="newWorkspaceName" className="text-zinc-300">
+                Workspace Name
+              </Label>
+              <Input
+                id="newWorkspaceName"
+                type="text"
+                placeholder="My New Workspace"
+                value={newWorkspaceName}
+                onChange={(e) => {
+                  setNewWorkspaceName(e.target.value)
+                  setNewWorkspaceSlug(generateUniqueSlug(e.target.value))
+                }}
+                className="bg-zinc-800 border-zinc-700 text-white"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="newWorkspaceSlug" className="text-zinc-300">
+                Workspace URL
+              </Label>
+              <div className="flex items-center gap-0">
+                <span className="h-10 px-3 bg-zinc-800 border border-r-0 border-zinc-700 text-zinc-500 text-sm flex items-center">
+                  app.thesolopreneur.app/
+                </span>
+                <Input
+                  id="newWorkspaceSlug"
+                  type="text"
+                  placeholder="my-workspace"
+                  value={newWorkspaceSlug}
+                  onChange={(e) => setNewWorkspaceSlug(e.target.value)}
+                  className="bg-zinc-800 border-zinc-700 text-white flex-1"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-zinc-300">Brand Color</Label>
+              <div className="flex gap-2">
+                {colors.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setNewWorkspaceColor(c)}
+                    className={`w-10 h-10 transition-all ${
+                      newWorkspaceColor === c ? "ring-2 ring-white ring-offset-2 ring-offset-zinc-900" : ""
+                    }`}
+                    style={{ backgroundColor: c }}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-4 border-t border-zinc-800">
+              <Button
+                onClick={handleCreateWorkspace}
+                disabled={creatingWorkspace || !newWorkspaceName.trim()}
+                className="bg-[#00ff88] text-black hover:bg-[#00ff88]/90"
+              >
+                {creatingWorkspace ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    <Building2 className="w-4 h-4 mr-2" />
+                    Create Workspace
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* All Workspaces List */}
+      {initialMemberships.length > 1 && (
+        <div className="bg-zinc-900 border border-zinc-800 p-6 space-y-4">
+          <h3 className="text-sm font-semibold text-white uppercase tracking-wider">Your Workspaces</h3>
+          <div className="space-y-2">
+            {initialMemberships.map((m) => {
+              const ws = m.tenant
+              const isActive = ws?.id === workspace?.id
+              return (
+                <div
+                  key={m.id}
+                  className={`p-4 border transition-colors ${
+                    isActive
+                      ? "bg-[#00ff88]/10 border-[#00ff88]/50"
+                      : "bg-zinc-800/50 border-zinc-700 hover:border-zinc-600"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="w-10 h-10 flex items-center justify-center text-white font-bold"
+                        style={{ backgroundColor: ws?.primary_color || "#00ff88" }}
+                      >
+                        {ws?.name?.[0]?.toUpperCase() || "W"}
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-white">{ws?.name || "Workspace"}</p>
+                        <p className="text-xs text-zinc-500">app.thesolopreneur.app/{ws?.slug}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`px-2 py-1 text-xs font-bold uppercase ${getRoleBadgeColor(m.role)}`}>
+                        {ROLE_LABELS[m.role]}
+                      </span>
+                      {isActive && (
+                        <span className="px-2 py-1 text-xs font-bold uppercase bg-[#00ff88] text-black">Active</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {!workspace && (
+        <div className="bg-zinc-900 border border-zinc-800 p-8 text-center">
+          <p className="text-zinc-400 mb-4">You don't have a workspace yet</p>
+          <Button
+            onClick={() => setShowCreateWorkspace(true)}
+            className="bg-[#00ff88] text-black hover:bg-[#00ff88]/90"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Create Your First Workspace
+          </Button>
+        </div>
+      )}
+
+      {workspace && (
+        <>
+          <div className="border-t border-zinc-800 pt-6">
+            <h2 className="text-lg font-semibold text-white mb-4">Current Workspace Settings</h2>
+          </div>
+        </>
+      )}
 
       {/* Current Role Badge */}
       {currentUserRole && (
