@@ -17,7 +17,7 @@ const plans = [
       "1 AI agent",
       "Community support",
     ],
-    cta: "Start Free Trial",
+    cta: "Get Started",
     popular: false,
   },
   {
@@ -34,7 +34,7 @@ const plans = [
       "API access",
       "Priority support",
     ],
-    cta: "Start Free Trial",
+    cta: "Get Started",
     popular: true,
   },
   {
@@ -51,7 +51,7 @@ const plans = [
       "Team seats",
       "Dedicated success manager",
     ],
-    cta: "Start Free Trial",
+    cta: "Get Started",
     popular: false,
   },
 ]
@@ -66,7 +66,7 @@ export function PricingSection() {
           </div>
           <h2 className="text-5xl md:text-7xl font-black tracking-tighter mb-6">No BS pricing.</h2>
           <p className="text-xl text-neutral-300 max-w-2xl mx-auto">
-            One platform, three tiers. All plans include a 14-day free trial.
+            One platform, three tiers. Start building your business today.
           </p>
         </div>
 

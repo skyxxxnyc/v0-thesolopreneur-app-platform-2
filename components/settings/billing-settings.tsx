@@ -91,7 +91,6 @@ export function BillingSettings({ workspace }: BillingSettingsProps) {
           <div className="text-right">
             <p className="text-sm text-zinc-400">Next billing date</p>
             <p className="text-sm text-white">January 15, 2025</p>
-            <p className="text-xs text-zinc-500 mt-1">14-day free trial active</p>
           </div>
         </div>
       </div>
@@ -99,7 +98,7 @@ export function BillingSettings({ workspace }: BillingSettingsProps) {
       {/* Pricing Info */}
       <div className="bg-zinc-900 border border-zinc-800 p-4">
         <p className="text-xs text-zinc-400">
-          All plans include a 14-day free trial. Cancel anytime. No credit card required for trial.
+          Cancel anytime. Manage your subscription below.
         </p>
       </div>
 
