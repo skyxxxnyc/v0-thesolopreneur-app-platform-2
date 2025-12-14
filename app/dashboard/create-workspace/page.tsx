@@ -22,15 +22,23 @@ export default function CreateWorkspacePage() {
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
 
-  const handleNameChange = (value: string) => {
-    setName(value)
-    const baseSlug = value
+  const generateUniqueSlug = (baseName: string) => {
+    const baseSlug = baseName
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-|-$/g, "")
-    // Add a random suffix to make it unique
-    const randomSuffix = Math.random().toString(36).substring(2, 6)
-    setSlug(baseSlug ? `${baseSlug}-${randomSuffix}` : "")
+
+    if (!baseSlug) return ""
+
+    // Use timestamp + random for better uniqueness
+    const timestamp = Date.now().toString(36)
+    const random = Math.random().toString(36).substring(2, 5)
+    return `${baseSlug}-${timestamp}${random}`
+  }
+
+  const handleNameChange = (value: string) => {
+    setName(value)
+    setSlug(generateUniqueSlug(value))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -49,44 +57,65 @@ export default function CreateWorkspacePage() {
       return
     }
 
-    try {
-      // Create tenant
-      // @ts-expect-error - Supabase query returns unknown type
-      const { data: tenant, error: tenantError } = await supabase
-        .from("tenants")
-        .insert({
-          name,
-          slug,
-          primary_color: color,
-        })
-        .select()
-        .single()
+    let attempts = 0
+    const maxAttempts = 5
+    let currentSlug = slug
 
-      if (tenantError) {
-        // Check if it's a duplicate slug error
-        if (tenantError.code === '23505' || tenantError.message.includes('duplicate') || tenantError.message.includes('unique')) {
-          throw new Error(`Workspace URL "${slug}" is already taken. Please choose a different name.`)
+    while (attempts < maxAttempts) {
+      try {
+        // Create tenant
+        // @ts-expect-error - Supabase query returns unknown type
+        const { data: tenant, error: tenantError } = await supabase
+          .from("tenants")
+          .insert({
+            name,
+            slug: currentSlug,
+            primary_color: color,
+          })
+          .select()
+          .single()
+
+        if (tenantError) {
+          // Check if it's a duplicate slug error
+          if (tenantError.code === '23505' || tenantError.message.includes('duplicate') || tenantError.message.includes('unique')) {
+            attempts++
+            if (attempts >= maxAttempts) {
+              throw new Error(`Unable to create workspace after ${maxAttempts} attempts. Please try a different name.`)
+            }
+            // Generate a new unique slug and retry
+            currentSlug = generateUniqueSlug(name)
+            setSlug(currentSlug)
+            console.log(`Slug conflict, retrying with: ${currentSlug}`)
+            continue
+          }
+          throw tenantError
         }
-        throw tenantError
+
+        // @ts-expect-error - Supabase query returns unknown type
+        const { error: memberError } = await supabase.from("tenant_members").insert({
+          tenant_id: (tenant as Tenant).id,
+          user_id: user.id,
+          role: "super_admin",
+        })
+
+        if (memberError) throw memberError
+
+        // Success!
+        router.push("/dashboard")
+        router.refresh()
+        return
+      } catch (err: unknown) {
+        // If we've exhausted attempts or it's not a duplicate error, throw
+        if (attempts >= maxAttempts || !(err instanceof Error && err.message.includes('duplicate'))) {
+          console.error('Create workspace error:', err)
+          setError(err instanceof Error ? err.message : "Failed to create workspace")
+          setIsLoading(false)
+          return
+        }
       }
-
-      // @ts-expect-error - Supabase query returns unknown type
-      const { error: memberError } = await supabase.from("tenant_members").insert({
-        tenant_id: (tenant as Tenant).id,
-        user_id: user.id,
-        role: "super_admin",
-      })
-
-      if (memberError) throw memberError
-
-      router.push("/dashboard")
-      router.refresh()
-    } catch (err: unknown) {
-      console.error('Create workspace error:', err)
-      setError(err instanceof Error ? err.message : "Failed to create workspace")
-    } finally {
-      setIsLoading(false)
     }
+
+    setIsLoading(false)
   }
 
   return (
