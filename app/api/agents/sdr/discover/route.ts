@@ -41,10 +41,24 @@ export async function POST(req: NextRequest) {
       if (firstTenant) {
         membership = { tenant_id: firstTenant.id }
       } else {
-        // Create a default tenant for dev-user
+        // Create a default tenant for dev-user using service role to bypass RLS
         const timestamp = Date.now().toString(36)
         const random = Math.random().toString(36).substring(2, 5)
-        const { data: newTenant, error: tenantError } = await supabase
+
+        // Import service role client
+        const { createClient } = await import("@supabase/supabase-js")
+        const supabaseService = createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.SUPABASE_SERVICE_ROLE_KEY!,
+          {
+            auth: {
+              autoRefreshToken: false,
+              persistSession: false,
+            },
+          }
+        )
+
+        const { data: newTenant, error: tenantError } = await supabaseService
           .from("tenants")
           .insert({
             name: "Dev Workspace",
@@ -60,7 +74,7 @@ export async function POST(req: NextRequest) {
         }
 
         // Add dev-user as member
-        await supabase.from("tenant_members").insert({
+        await supabaseService.from("tenant_members").insert({
           tenant_id: newTenant.id,
           user_id: currentUser.id,
           role: "owner",
