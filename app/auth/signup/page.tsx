@@ -80,7 +80,7 @@ export default function SignupPage() {
 
         <div className="flex items-center gap-8 text-zinc-500 text-sm">
           <span>No credit card required</span>
-          <span>14-day free trial</span>
+          <span>Cancel anytime</span>
         </div>
       </div>
 
